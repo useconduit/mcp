@@ -1,7 +1,7 @@
 {
-  "name": "conduit-mcp",
+  "name": "@useconduit/mcp",
   "version": "0.1.0",
-  "description": "MCP server for Conduit — connect any AI agent to your data streams",
+  "description": "MCP server for Conduit \u2014 connect any AI agent to your data streams",
   "main": "dist/index.js",
   "bin": {
     "conduit-mcp": "dist/index.js"
