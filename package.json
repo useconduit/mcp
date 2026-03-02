@@ -1,0 +1,45 @@
+{
+  "name": "conduit-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Conduit — connect any AI agent to your data streams",
+  "main": "dist/index.js",
+  "bin": {
+    "conduit-mcp": "dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "conduit",
+    "ai",
+    "data-pipeline",
+    "model-context-protocol",
+    "iot",
+    "streams"
+  ],
+  "author": "Conduit <hello@usecondu.it>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/useconduit/mcp"
+  },
+  "homepage": "https://usecondu.it",
+  "bugs": {
+    "url": "https://github.com/useconduit/mcp/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
