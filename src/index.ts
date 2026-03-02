@@ -199,6 +199,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['category', 'message'],
       },
     },
+    {
+      name: 'conduit_backfill',
+      description: 'Replay historical events from a stream to one or more forwarding destinations. Runs as a background job with progress tracking.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          stream: { type: 'string', description: 'Stream name' },
+          from: { type: 'string', description: 'Start timestamp (ISO 8601, e.g. "2026-02-24T00:00:00Z")' },
+          to: { type: 'string', description: 'End timestamp (ISO 8601, e.g. "2026-03-02T23:59:59Z")' },
+          destination_ids: { type: 'array', items: { type: 'string' }, description: 'Specific destination IDs to backfill (omit for all destinations)' },
+        },
+        required: ['stream', 'from', 'to'],
+      },
+    },
+    {
+      name: 'conduit_backfill_status',
+      description: 'Check the status of a backfill job — progress, events processed, errors.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          stream: { type: 'string', description: 'Stream name' },
+          job_id: { type: 'string', description: 'Backfill job ID (omit to list all jobs for the stream)' },
+        },
+        required: ['stream'],
+      },
+    },
+    {
+      name: 'conduit_time_range',
+      description: 'Get the time range and total event count for a stream. Useful before starting a backfill.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          stream: { type: 'string', description: 'Stream name' },
+        },
+        required: ['stream'],
+      },
+    },
   ],
 }));
 
@@ -297,6 +334,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             context: args!.context || {},
           }),
         });
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      }
+
+      case 'conduit_backfill': {
+        const data = await api(`/api/v1/streams/${args!.stream}/backfill`, {
+          method: 'POST',
+          body: JSON.stringify({
+            from: args!.from,
+            to: args!.to,
+            destination_ids: args!.destination_ids || [],
+          }),
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      }
+
+      case 'conduit_backfill_status': {
+        const path = args!.job_id
+          ? `/api/v1/streams/${args!.stream}/backfill/${args!.job_id}`
+          : `/api/v1/streams/${args!.stream}/backfill`;
+        const data = await api(path);
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      }
+
+      case 'conduit_time_range': {
+        const data = await api(`/api/v1/streams/${args!.stream}/time-range`);
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
       }
 
