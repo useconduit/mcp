@@ -143,16 +143,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'conduit_add_forward',
-      description: 'Add a webhook forwarding destination to a stream. Events are forwarded in real-time.',
+      description: 'Add a forwarding destination to a stream. Supports HTTP webhooks, MQTT brokers, and WebSocket endpoints. Events are forwarded in real-time.',
       inputSchema: {
         type: 'object' as const,
         properties: {
           stream: { type: 'string', description: 'Stream name' },
-          url: { type: 'string', description: 'Webhook URL to forward events to' },
-          method: { type: 'string', enum: ['POST', 'PUT'], description: 'HTTP method (default: POST)' },
-          headers: { type: 'object', description: 'Optional headers to include' },
+          dest_type: { type: 'string', enum: ['http', 'mqtt', 'websocket'], description: 'Destination type (default: http)' },
+          url: { type: 'string', description: 'Webhook or WebSocket URL (for http/websocket types)' },
+          broker: { type: 'string', description: 'MQTT broker URL (for mqtt type)' },
+          topic: { type: 'string', description: 'MQTT topic (for mqtt type)' },
+          auth_method: { type: 'string', enum: ['none', 'bearer', 'hmac', 'api_key', 'basic', 'custom_headers'], description: 'Authentication method (default: none)' },
+          auth_token: { type: 'string', description: 'Bearer token (for bearer auth)' },
+          hmac_secret: { type: 'string', description: 'HMAC signing secret (for hmac auth)' },
+          basic_user: { type: 'string', description: 'Username (for basic auth)' },
+          basic_pass: { type: 'string', description: 'Password (for basic auth)' },
+          schema_mode: { type: 'string', enum: ['pass-through', 'pinned', 'mapped'], description: 'Schema mode (default: pass-through)' },
         },
-        required: ['stream', 'url'],
+        required: ['stream'],
       },
     },
     {
@@ -240,13 +247,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'conduit_add_forward': {
+        const body: Record<string, any> = {
+          type: args!.dest_type || 'http',
+          schema_mode: args!.schema_mode || 'pass-through',
+        };
+        if (body.type === 'http' || body.type === 'websocket') {
+          body.url = args!.url;
+        }
+        if (body.type === 'mqtt') {
+          body.broker = args!.broker;
+          body.topic = args!.topic;
+          if (args!.mqtt_user) body.mqtt_user = args!.mqtt_user;
+          if (args!.mqtt_pass) body.mqtt_pass = args!.mqtt_pass;
+        }
+        if (args!.auth_method && args!.auth_method !== 'none') {
+          body.auth_method = args!.auth_method;
+          if (args!.auth_token) body.auth_token = args!.auth_token;
+          if (args!.hmac_secret) body.hmac_secret = args!.hmac_secret;
+          if (args!.basic_user) body.basic_user = args!.basic_user;
+          if (args!.basic_pass) body.basic_pass = args!.basic_pass;
+        }
         const data = await api(`/api/v1/streams/${args!.stream}/forwards`, {
           method: 'POST',
-          body: JSON.stringify({
-            url: args!.url,
-            method: args!.method || 'POST',
-            headers: args!.headers || {},
-          }),
+          body: JSON.stringify(body),
         });
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
       }
