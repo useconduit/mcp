@@ -1,6 +1,8 @@
-# conduit-mcp
+# @useconduit/mcp
 
 MCP server for [Conduit](https://usecondu.it) — connect any AI agent to your data streams.
+
+📖 **[API Docs](https://api.usecondu.it/docs)** · 🌐 **[Website](https://usecondu.it)** · 📦 **[npm](https://www.npmjs.com/package/@useconduit/mcp)**
 
 ## Quick Start
 
