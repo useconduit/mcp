@@ -3,6 +3,7 @@
 /**
  * Conduit MCP Server
  *
+ * Store, transform, and stream data to any protocol. Backfill anytime.
  * Connect any AI agent to your Conduit data streams via
  * the Model Context Protocol.
  *
@@ -11,15 +12,20 @@
  *   CONDUIT_API_KEY  — Your Conduit API key (required)
  *
  * Tools:
- *   conduit_list_streams   — List all streams
- *   conduit_get_schema     — Get schema for a stream
- *   conduit_create_stream  — Create a new stream
- *   conduit_ingest         — Send events to a stream
- *   conduit_list_events    — Query events with pagination & time range
- *   conduit_add_forward    — Add a forwarding destination
- *   conduit_stream_stats   — Get ingestion statistics
- *   conduit_analyze_schema — Analyze a JSON payload for optimal schema
- *   conduit_feedback       — Submit feedback to the Conduit team
+ *   conduit_list_streams      — List all streams
+ *   conduit_get_schema        — Get schema for a stream
+ *   conduit_create_stream     — Create a new stream
+ *   conduit_ingest            — Send events to a stream
+ *   conduit_list_events       — Query events with pagination & time range
+ *   conduit_add_forward       — Add a forwarding destination
+ *   conduit_stream_stats      — Get ingestion statistics
+ *   conduit_analyze_schema    — Analyze a JSON payload for optimal schema
+ *   conduit_feedback          — Submit feedback to the Conduit team
+ *   conduit_list_transforms   — List transforms for a stream
+ *   conduit_create_transform  — Create a JS transform for a stream
+ *   conduit_preview_transform — Preview a transform against sample data
+ *   conduit_backfill          — Replay historical events to destinations
+ *   conduit_list_backfill_jobs — List or get status of backfill jobs
  *
  * Resources:
  *   conduit://streams          — All streams
@@ -74,7 +80,7 @@ async function getTenantPrefix(): Promise<string> {
 }
 
 const server = new Server(
-  { name: 'conduit', version: '0.1.0' },
+  { name: 'conduit', version: '0.2.0' },
   { capabilities: { tools: {}, resources: {} } }
 );
 
@@ -197,6 +203,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           context: { type: 'object', description: 'Optional context (stream name, error details, etc.)' },
         },
         required: ['category', 'message'],
+      },
+    },
+    {
+      name: 'conduit_list_transforms',
+      description: 'List all transforms configured for a stream. Transforms are JS functions applied to events before forwarding to destinations.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          stream: { type: 'string', description: 'Stream name' },
+        },
+        required: ['stream'],
+      },
+    },
+    {
+      name: 'conduit_create_transform',
+      description: 'Create a new transform for a stream. The code should be a JS function body that receives an event object and returns the transformed event. Available helpers: pick, omit, get, set, flatten, rename, mapValues, mapKeys.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          stream: { type: 'string', description: 'Stream name' },
+          name: { type: 'string', description: 'Transform name' },
+          code: { type: 'string', description: 'JS function body (e.g. "return { ...event, processed: true }")' },
+        },
+        required: ['stream', 'name', 'code'],
+      },
+    },
+    {
+      name: 'conduit_preview_transform',
+      description: 'Preview a transform by running it against a sample payload without persisting. Returns the transformed output and execution time.',
+      inputSchema: {
+        type: 'object' as const,
+        properties: {
+          stream: { type: 'string', description: 'Stream name' },
+          code: { type: 'string', description: 'JS function body to test' },
+          payload: { type: 'object', description: 'Sample JSON event to transform' },
+        },
+        required: ['stream', 'code', 'payload'],
       },
     },
     {
@@ -333,6 +376,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             source: 'mcp',
             context: args!.context || {},
           }),
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      }
+
+      case 'conduit_list_transforms': {
+        const data = await api(`/api/v1/streams/${args!.stream}/transforms`);
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      }
+
+      case 'conduit_create_transform': {
+        const data = await api(`/api/v1/streams/${args!.stream}/transforms`, {
+          method: 'POST',
+          body: JSON.stringify({ name: args!.name, code: args!.code }),
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      }
+
+      case 'conduit_preview_transform': {
+        const data = await api(`/api/v1/streams/${args!.stream}/transform/preview`, {
+          method: 'POST',
+          body: JSON.stringify({ code: args!.code, payload: args!.payload }),
         });
         return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
       }
